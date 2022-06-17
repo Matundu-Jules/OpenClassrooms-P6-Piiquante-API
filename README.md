@@ -1,2 +1,2 @@
-# OpenClassrooms-P6-Piiquante-
+# OpenClassrooms-P6-Piiquante
 Formation OpenClassrooms - Développeur Web
