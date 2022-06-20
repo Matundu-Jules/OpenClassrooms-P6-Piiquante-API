@@ -1,4 +1,5 @@
 const dotenv = require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const morgan = require("morgan");
 require("./config/mongodb.config");
@@ -9,7 +10,13 @@ const saucesRoutes = require("./routes/sauces.routes");
 
 const app = express();
 
-app.use(express.json());
+// Récupérer la data des requêtes lorsque l'informatin est encodé avec le type application/json :
+app.use(express.json()); // permet d'utiliser req.body et de parser le body (comme body-parser).
+// Récupérer data pour information encode en application/x-www-form-urlencoded, c'est le format par defaut d'un formulaire :
+app.use(express.urlencoded({extended: true})); // Permet de passer et recuperer des params URL.
+app.use(morgan("tiny")); // Gestion erreur pour development.
+
+// Déclaration Header de la réponse :
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader(
@@ -19,8 +26,10 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
     next();
 });
-app.use(express.urlencoded({extended: true}));
-app.use(morgan("tiny"));
+
+// Définir le chemin absolu du répertoire au cas ou l'app express est lancée depuis un autre répertoire :
+app.use("/uploads/images", express.static(path.join(__dirname, "uploads/images")));
+// Sauces :
 app.use("/api/auth", authRoutes);
 app.use("/api/sauces", saucesRoutes);
 

@@ -1,9 +1,9 @@
-const Sauces = require("../models/sauces.model");
+const Sauce = require("../models/sauce.model");
 
 exports.getSauces = () => {
-    return Sauces.find({}).exec();
+    return Sauce.find({}).exec();
 };
 
 exports.getSauce = sauceId => {
-    return Sauces.findOne({_id: sauceId}).exec();
+    return Sauce.findOne({_id: sauceId}).exec();
 };
