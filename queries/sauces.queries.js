@@ -7,3 +7,7 @@ exports.getSauces = () => {
 exports.getSauce = sauceId => {
     return Sauce.findOne({_id: sauceId}).exec();
 };
+
+exports.modifySauce = (sauceId, sauceObject) => {
+    return Sauce.findByIdAndUpdate(sauceId, {...sauceObject, _id: sauceId}).exec();
+};
