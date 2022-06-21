@@ -1,9 +1,5 @@
 const multer = require("multer");
 const path = require("path");
-// const upload = multer({
-//     dest: "./images",
-// });
-// module.exports = upload.single("image");
 
 const MIME_TYPES = {
     "image/jpg": "jpg",
