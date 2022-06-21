@@ -61,17 +61,17 @@ exports.getSauce = async (req, res, next) => {
 exports.modifySauce = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
-        // console.log(sauceId);
+        console.log(sauceId);
 
-        const sauce = JSON.parse(req.body.sauce);
+        // const sauce = JSON.parse(req.body.sauce);
         // console.log({sauce});
 
-        // const file = req.file;
-        // console.log("file :", file);
+        const file = req.file;
+        console.log("file :", file);
 
         const sauceObject = req.file
             ? {
-                  ...sauce,
+                  ...JSON.parse(req.body.sauce),
                   imageUrl: `${req.protocol}://${req.get("host")}/uploads/images/${req.file.filename}`,
               }
             : {...req.body};
@@ -79,6 +79,6 @@ exports.modifySauce = async (req, res, next) => {
         await modifySauce(sauceId, sauceObject);
         res.status(201).json({message: "La modification de la sauce a bien été effectuer."});
     } catch (err) {
-        res.status(400).json({err});
+        res.status(400).json(err);
     }
 };
