@@ -8,5 +8,6 @@ router.post("/", jwt.verifyJwtToken, multer, saucesCtlr.createSauce);
 router.get("/:id", jwt.verifyJwtToken, saucesCtlr.getSauce);
 router.put("/:id", jwt.verifyJwtToken, multer, saucesCtlr.modifySauce);
 router.delete("/:id", jwt.verifyJwtToken, saucesCtlr.deleteSauce);
+router.post("/:id/like", jwt.verifyJwtToken, saucesCtlr.addLike);
 
 module.exports = router;

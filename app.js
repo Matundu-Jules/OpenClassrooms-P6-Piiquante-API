@@ -1,7 +1,9 @@
+// Variables d'environnement :
 const dotenv = require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const morgan = require("morgan");
+const cors = require("cors");
 require("./config/mongodb.config");
 
 // Routes :
@@ -15,6 +17,7 @@ app.use(express.json()); // permet d'utiliser req.body et de parser le body (com
 // Récupérer data pour information encode en application/x-www-form-urlencoded, c'est le format par defaut d'un formulaire :
 app.use(express.urlencoded({extended: true})); // Permet de passer et recuperer des params URL.
 app.use(morgan("tiny")); // Gestion erreur pour development.
+app.use(cors());
 
 // Déclaration Header de la réponse :
 app.use((req, res, next) => {

@@ -24,11 +24,10 @@ exports.verifyJwtToken = (req, res, next) => {
         if (req.body.userId && req.user.userId !== userId) {
             res.status(401, "Token d'authentification invalide !");
         } else {
+            console.log("Le token est valide !");
             next();
         }
         // console.log("vérification token ok");
-
-        // res.json(req.user);
     } catch (err) {
         res.status(401).json({message: "Veuillez vous identifier."});
     }

@@ -63,7 +63,13 @@ exports.modifySauce = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
         // console.log(sauceId);
+        const sauce = await getSauce(sauceId);
+        console.log("sauce.userId : ", sauce.userId);
+        console.log("req.user : ", req.user);
 
+        if (sauce.userId !== req.user.userId) {
+            return res.status(401).json({message: "Veuillez vous identifier."});
+        }
         // const sauce = JSON.parse(req.body.sauce);
         // console.log({sauce});
 
@@ -103,6 +109,7 @@ exports.modifySauce = async (req, res, next) => {
     }
 };
 
+// Suppression de sauce :
 exports.deleteSauce = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
@@ -125,6 +132,69 @@ exports.deleteSauce = async (req, res, next) => {
 
             res.status(200).json({message: "Deleted !"});
         }
+    } catch (err) {
+        res.status(400).json(err);
+    }
+};
+
+// Ajout de like :
+exports.addLike = async (req, res, next) => {
+    try {
+        const sauceId = req.params.id;
+        const userId = req.body.userId;
+        console.log("sauceId : ", sauceId);
+        const sauce = await getSauce(sauceId);
+        const indexLike = sauce.usersLiked.indexOf(userId);
+        const indexDislike = sauce.usersDisliked.indexOf(userId);
+        console.log("indexLike : ", indexLike);
+        console.log("indexDislike : ", indexDislike);
+
+        if (req.body.like === 1) {
+            // if (indexDislike > -1) {
+            //     sauce.dislikes--;
+            //     const newArray = sauce.usersDisliked.filter(id => id != userId);
+            //     sauce.usersDisliked = newArray;
+            //     await sauce.save();
+            // }
+
+            sauce.usersLiked.push(userId);
+            sauce.likes++;
+            console.log("sauce : ", sauce);
+            await sauce.save();
+        }
+
+        if (req.body.like === 0) {
+            console.log("sauce before  : ", sauce);
+
+            if (indexLike > -1) {
+                sauce.likes--;
+                const newArray = sauce.usersLiked.filter(id => id != userId);
+                sauce.usersLiked = newArray;
+                await sauce.save();
+
+                // console.log("test : ", newArray);
+                // console.log("sauce after  : ", sauce);
+            }
+            if (indexDislike > -1) {
+                sauce.dislikes--;
+                const newArray = sauce.usersDisliked.filter(id => id != userId);
+                sauce.usersDisliked = newArray;
+                await sauce.save();
+
+                console.log("test : ", newArray);
+                console.log("sauce after  : ", sauce);
+            }
+        }
+
+        if (req.body.like === -1) {
+            sauce.usersDisliked.push(userId);
+            sauce.dislikes++;
+            console.log("sauce : ", sauce);
+            await sauce.save();
+        }
+
+        // console.log(sauce);
+        res.status(200).json({message: "test !"});
     } catch (err) {
         res.status(400).json(err);
     }
