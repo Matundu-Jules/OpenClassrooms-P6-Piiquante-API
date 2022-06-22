@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const Sauce = require("../models/sauce.model");
 const jwt = require("jsonwebtoken");
 const createError = require("http-errors");
-const {getSauces, getSauce, modifySauce} = require("../queries/sauces.queries");
+const {getSauces, getSauce, modifySauce, deleteSauceQuery} = require("../queries/sauces.queries");
 const util = require("util");
 const path = require("path");
 const fs = require("fs");
@@ -58,17 +58,20 @@ exports.getSauce = async (req, res, next) => {
     }
 };
 
+// Modifier une sauce :
 exports.modifySauce = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
-        console.log(sauceId);
+        // console.log(sauceId);
 
         // const sauce = JSON.parse(req.body.sauce);
         // console.log({sauce});
 
         const file = req.file;
-        console.log("file :", file);
+        // console.log("file :", file);
 
+        // Si une nouvelle img est ajoutée alors on récupère les infos de la sauce et mettons a jour l'imageUrl.
+        // Sinon on met a jour les differentes proprietes :
         const sauceObject = req.file
             ? {
                   ...JSON.parse(req.body.sauce),
@@ -76,14 +79,15 @@ exports.modifySauce = async (req, res, next) => {
               }
             : {...req.body};
 
+        // Si une nouvelle img est ajouté alors on supprime la précédante du répertoire :
         if (req.file) {
             const initialModifiedSauce = await getSauce(sauceId);
-            console.log("initialModifiedSauce : ", initialModifiedSauce);
+            // console.log("initialModifiedSauce : ", initialModifiedSauce);
             const imgUrl = initialModifiedSauce.imageUrl;
-            console.log(imgUrl);
+            // console.log("imgUrl : ", imgUrl);
 
-            const path = "./uploads/images/" + imgUrl.split("/")[5];
-            console.log("PATH : ", path);
+            const path = "./uploads/images/" + imgUrl.split("/images/")[1];
+            // console.log("PATH : ", path);
 
             fs.unlink(path, err => {
                 if (err) throw err;
@@ -91,9 +95,36 @@ exports.modifySauce = async (req, res, next) => {
             });
         }
 
-        console.log("sauceObject : ", sauceObject);
+        // console.log("sauceObject : ", sauceObject);
         await modifySauce(sauceId, sauceObject);
         res.status(201).json({message: "La modification de la sauce a bien été effectuer."});
+    } catch (err) {
+        res.status(400).json(err);
+    }
+};
+
+exports.deleteSauce = async (req, res, next) => {
+    try {
+        const sauceId = req.params.id;
+        const sauce = await getSauce(sauceId);
+        const imgUrl = sauce.imageUrl;
+
+        // console.log("DELETE SAUCE : ", sauce);
+        // console.log(req.user.userId === sauce.userId);
+
+        if (req.user.userId === sauce.userId) {
+            await deleteSauceQuery(sauceId);
+
+            const path = "./uploads/images/" + imgUrl.split("/images/")[1];
+            // console.log("PATH : ", path);
+
+            fs.unlink(path, err => {
+                if (err) throw err;
+                // console.log("File delete !");
+            });
+
+            res.status(200).json({message: "Deleted !"});
+        }
     } catch (err) {
         res.status(400).json(err);
     }

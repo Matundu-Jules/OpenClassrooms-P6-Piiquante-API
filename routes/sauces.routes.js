@@ -7,5 +7,6 @@ router.get("/", jwt.verifyJwtToken, saucesCtlr.getAllSauces);
 router.post("/", jwt.verifyJwtToken, multer, saucesCtlr.createSauce);
 router.get("/:id", jwt.verifyJwtToken, saucesCtlr.getSauce);
 router.put("/:id", jwt.verifyJwtToken, multer, saucesCtlr.modifySauce);
+router.delete("/:id", jwt.verifyJwtToken, saucesCtlr.deleteSauce);
 
 module.exports = router;

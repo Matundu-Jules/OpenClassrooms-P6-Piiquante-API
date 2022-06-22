@@ -11,3 +11,7 @@ exports.getSauce = sauceId => {
 exports.modifySauce = (sauceId, sauceObject) => {
     return Sauce.findByIdAndUpdate(sauceId, {...sauceObject, _id: sauceId}).exec();
 };
+
+exports.deleteSauceQuery = sauceId => {
+    return Sauce.findByIdAndDelete(sauceId).exec();
+};
