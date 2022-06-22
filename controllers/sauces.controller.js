@@ -5,7 +5,7 @@ const createError = require("http-errors");
 const {getSauces, getSauce, modifySauce} = require("../queries/sauces.queries");
 const util = require("util");
 const path = require("path");
-const {log} = require("console");
+const fs = require("fs");
 
 // Création de sauce à partir des données formulaire :
 exports.createSauce = async (req, res, next) => {
@@ -75,6 +75,22 @@ exports.modifySauce = async (req, res, next) => {
                   imageUrl: `${req.protocol}://${req.get("host")}/uploads/images/${req.file.filename}`,
               }
             : {...req.body};
+
+        if (req.file) {
+            const initialModifiedSauce = await getSauce(sauceId);
+            console.log("initialModifiedSauce : ", initialModifiedSauce);
+            const imgUrl = initialModifiedSauce.imageUrl;
+            console.log(imgUrl);
+
+            const path = "./uploads/images/" + imgUrl.split("/")[5];
+            console.log("PATH : ", path);
+
+            fs.unlink(path, err => {
+                if (err) throw err;
+                console.log("File delete !");
+            });
+        }
+
         console.log("sauceObject : ", sauceObject);
         await modifySauce(sauceId, sauceObject);
         res.status(201).json({message: "La modification de la sauce a bien été effectuer."});
