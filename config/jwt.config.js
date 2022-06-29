@@ -2,6 +2,7 @@ const dotenv = require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const secret = process.env.ACCESS_TOKEN_SECRET;
 
+// Création du token JWT :
 exports.createJwtToken = user => {
     return jwt.sign(
         {
@@ -12,23 +13,22 @@ exports.createJwtToken = user => {
     );
 };
 
-// Vérification du token pour les url /sauces :
+// Vérification du token :
 exports.verifyJwtToken = (req, res, next) => {
     try {
         // Récupération du token :
         const token = req.headers.authorization.split(" ")[1];
+
+        // Vérification du token :
         const decodedToken = jwt.verify(token, secret);
         const userId = decodedToken.userId;
         req.user = {userId};
 
         if (req.body.userId && req.user.userId !== userId) {
-            res.status(401, "Token d'authentification invalide !");
-        } else {
-            console.log("Le token est valide !");
-            next();
+            throw new Error("Token d'authentification invalide !");
         }
-        // console.log("vérification token ok");
+        next();
     } catch (err) {
-        res.status(401).json({message: "Veuillez vous identifier."});
+        next(err);
     }
 };

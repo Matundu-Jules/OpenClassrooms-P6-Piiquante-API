@@ -1,6 +1,7 @@
 const multer = require("multer");
 const path = require("path");
 
+// Définition des formats d'image supportés :
 const MIME_TYPES = {
     "image/jpg": "jpg",
     "image/jpeg": "jpg",
@@ -8,28 +9,31 @@ const MIME_TYPES = {
 };
 
 const storage = multer.diskStorage({
+    // Chemin de destination des images :
     destination: function (request, file, callback) {
-        //    callback(null, "./upload/images");
         callback(null, "uploads/images");
     },
     filename: function (req, file, callback) {
-        // Si l'user selectionne une image dont le nom contient des espaces alors,
-        //  on remplace les espaces par des _ .
+        // Remplacer les espaces du nom de fichier par des '_':
         const name = file.originalname.split(" ").join("_");
-        const extension = MIME_TYPES[file.mimetype];
-        //    console.log(Date.now() + "-" + name + "." + extension);
-        //    console.log("PATH : ", path.join(__dirname, "../upload/images"));
         callback(null, Date.now() + "-" + name);
     },
 });
 
-const upload = multer({
-    storage: storage,
+// Autoriser uniquement les images des types déclaré au préalable :
+const fileFilter = (req, file, cb) => {
+    if (!MIME_TYPES[file.mimetype]) {
+        cb(new Error("Seuls les formats JPG et PNG sont pris en charge."));
+    } else {
+        cb(null, true);
+    }
+};
+
+// Exportation de la configuration multer pour la gestion des images :
+module.exports = multer({
+    storage,
     limits: {
         fieldSize: 1024 * 1024 * 3,
     },
-});
-
-console.log(storage);
-
-module.exports = multer({storage}).single("image");
+    fileFilter: fileFilter,
+}).single("image");

@@ -1,19 +1,14 @@
-const bcrypt = require("bcrypt");
 const Sauce = require("../models/sauce.model");
-const jwt = require("jsonwebtoken");
-const createError = require("http-errors");
-const {getSauces, getSauce, modifySauce, deleteSauceQuery} = require("../queries/sauces.queries");
-const util = require("util");
+const {getSauceQuery, getAllSaucesQuery, modifySauceQuery, deleteSauceQuery} = require("../queries/sauces.queries");
 const path = require("path");
 const fs = require("fs");
 
-// Création de sauce à partir des données formulaire :
+// Création de sauce :
 exports.createSauce = async (req, res, next) => {
     try {
         const sauceObject = JSON.parse(req.body.sauce);
-        const sauceFile = req.file;
-        // console.log("sauceObject : ", sauceObject);1
-        // console.log("FILE :", sauceFile);
+
+        // Création de la sauce à partir des données formulaire :
         const sauce = new Sauce({
             ...sauceObject,
             imageUrl: `${req.protocol}://${req.get("host")}/uploads/images/${req.file.filename}`,
@@ -24,37 +19,33 @@ exports.createSauce = async (req, res, next) => {
         });
         await sauce.save();
 
-        // console.log("LA SAUCE : ", sauce);
-        // console.log("LA SAUCE ID : ", sauce._id);
-
         res.status(201).json({message: "L'ajout de votre nouvelle sauce a été prise en compte."});
     } catch (err) {
-        console.log(util.inspect(err, {compact: false, depth: 5, breakLength: 80, color: true}));
-        res.status(500).json({err});
+        next(err);
     }
 };
 
-// Récupération d'une sauce via son Id :
+// Récupération de toutes les sauces :
 exports.getAllSauces = async (req, res, next) => {
     try {
-        const sauces = await getSauces();
+        const sauces = await getAllSaucesQuery();
         res.status(200).json(sauces);
     } catch (err) {
-        res.status(400).json({err});
+        next(err);
     }
 };
 
-// Récupération d'une sauce via son Id :
+// Récupération d'une sauce :
 exports.getSauce = async (req, res, next) => {
     try {
-        // console.log(req.params);
-
+        // Récupération id passé dans l'url :
         const sauceId = req.params.id;
-        const sauce = await getSauce(sauceId);
-        // console.log(sauce);
+
+        // Récupération de la sauce via son Id :
+        const sauce = await getSauceQuery(sauceId);
         res.status(200).json(sauce);
     } catch (err) {
-        res.status(400).json({err});
+        next(err);
     }
 };
 
@@ -62,50 +53,45 @@ exports.getSauce = async (req, res, next) => {
 exports.modifySauce = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
-        // console.log(sauceId);
-        const sauce = await getSauce(sauceId);
-        console.log("sauce.userId : ", sauce.userId);
-        console.log("req.user : ", req.user);
+        const sauce = await getSauceQuery(sauceId);
 
         if (sauce.userId !== req.user.userId) {
-            return res.status(401).json({message: "Veuillez vous identifier."});
+            res.status(403);
+            throw new Error("403: Unauthorized request.");
         }
-        // const sauce = JSON.parse(req.body.sauce);
-        // console.log({sauce});
 
-        const file = req.file;
-        // console.log("file :", file);
+        let modifiedSauce;
 
-        // Si une nouvelle img est ajoutée alors on récupère les infos de la sauce et mettons a jour l'imageUrl.
-        // Sinon on met a jour les differentes proprietes :
-        const sauceObject = req.file
-            ? {
-                  ...JSON.parse(req.body.sauce),
-                  imageUrl: `${req.protocol}://${req.get("host")}/uploads/images/${req.file.filename}`,
-              }
-            : {...req.body};
-
-        // Si une nouvelle img est ajouté alors on supprime la précédante du répertoire :
+        // Si une nouvelle img est ajouté alors on l'enregistre et on supprime l'ancienne du répertoire :
         if (req.file) {
-            const initialModifiedSauce = await getSauce(sauceId);
-            // console.log("initialModifiedSauce : ", initialModifiedSauce);
-            const imgUrl = initialModifiedSauce.imageUrl;
-            // console.log("imgUrl : ", imgUrl);
+            modifiedSauce = {
+                ...JSON.parse(req.body.sauce),
+                imageUrl: `${req.protocol}://${req.get("host")}/uploads/images/${req.file.filename}`,
+            };
 
+            // Récupérer l'url de l'ancienne image de la sauce :
+            const imgUrl = sauce.imageUrl;
+
+            // Création u path pour supprimer l'ancienne image :
             const path = "./uploads/images/" + imgUrl.split("/images/")[1];
-            // console.log("PATH : ", path);
 
+            // Suppression de l'ancienne image :
             fs.unlink(path, err => {
                 if (err) throw err;
-                console.log("File delete !");
+                console.log("Fichier supprimé !");
             });
         }
 
-        // console.log("sauceObject : ", sauceObject);
-        await modifySauce(sauceId, sauceObject);
+        // Si aucune image n'est reçue lors de la modification alors on récupère uniquement les données via le body :
+        if (!req.file) {
+            modifiedSauce = {...req.body};
+        }
+
+        // Appliquer les modification dans la base de données :
+        await modifySauceQuery(sauceId, modifiedSauce);
         res.status(201).json({message: "La modification de la sauce a bien été effectuer."});
     } catch (err) {
-        res.status(400).json(err);
+        next(err);
     }
 };
 
@@ -113,89 +99,108 @@ exports.modifySauce = async (req, res, next) => {
 exports.deleteSauce = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
-        const sauce = await getSauce(sauceId);
-        const imgUrl = sauce.imageUrl;
+        const sauce = await getSauceQuery(sauceId);
 
-        // console.log("DELETE SAUCE : ", sauce);
-        // console.log(req.user.userId === sauce.userId);
-
-        if (req.user.userId === sauce.userId) {
-            await deleteSauceQuery(sauceId);
-
-            const path = "./uploads/images/" + imgUrl.split("/images/")[1];
-            // console.log("PATH : ", path);
-
-            fs.unlink(path, err => {
-                if (err) throw err;
-                // console.log("File delete !");
-            });
-
-            res.status(200).json({message: "Deleted !"});
+        if (sauce.userId !== req.user.userId) {
+            res.status(403);
+            throw new Error("403: Unauthorized request.");
         }
+
+        await deleteSauceQuery(sauceId);
+
+        const imgUrl = sauce.imageUrl;
+        const path = "./uploads/images/" + imgUrl.split("/images/")[1];
+
+        fs.unlink(path, err => {
+            if (err) throw err;
+            console.log("Fichier supprimé !");
+        });
+
+        res.status(200).json({message: "La sauce a bien été supprimé !"});
     } catch (err) {
-        res.status(400).json(err);
+        next(err);
     }
 };
 
-// Ajout de like :
+// Ajout de like et dislike :
 exports.addLike = async (req, res, next) => {
     try {
         const sauceId = req.params.id;
         const userId = req.body.userId;
-        console.log("sauceId : ", sauceId);
-        const sauce = await getSauce(sauceId);
+
+        const sauce = await getSauceQuery(sauceId);
         const indexLike = sauce.usersLiked.indexOf(userId);
         const indexDislike = sauce.usersDisliked.indexOf(userId);
-        console.log("indexLike : ", indexLike);
-        console.log("indexDislike : ", indexDislike);
 
-        if (req.body.like === 1) {
-            // if (indexDislike > -1) {
-            //     sauce.dislikes--;
-            //     const newArray = sauce.usersDisliked.filter(id => id != userId);
-            //     sauce.usersDisliked = newArray;
-            //     await sauce.save();
-            // }
-
-            sauce.usersLiked.push(userId);
-            sauce.likes++;
-            console.log("sauce : ", sauce);
-            await sauce.save();
+        // Si on tente d'envoyer autre chose que -1, 0, ou 1, alors renvoyer une erreur :
+        if (req.body.like < -1 || req.body.like > 1 || isNaN(req.body.like)) {
+            res.status(400);
+            throw new Error(`Cette valeur n'est pas acceptée : ${req.body.like}`);
         }
 
-        if (req.body.like === 0) {
-            console.log("sauce before  : ", sauce);
+        // Ajout de Like :
+        if (req.body.like === 1) {
+            // Si l'user a déja liker, retourner une erreur :
+            if (indexLike !== -1) {
+                res.status(400);
+                throw new Error("Vous avez déja liker cette sauce.");
+            }
 
+            // Si l'user a déja disliker, supprimer le dislike :
+            if (indexDislike !== -1) {
+                sauce.dislikes--;
+                const newArray = sauce.usersDisliked.filter(id => id != userId);
+                sauce.usersDisliked = newArray;
+            }
+
+            // Ajouter le like :
+            sauce.usersLiked.push(userId);
+            sauce.likes++;
+            await sauce.save();
+            res.status(200).json({message: "Votre like a été ajouté !"});
+        }
+
+        // Ajout de Dislike :
+        if (req.body.like === -1) {
+            // Si l'user a déja disliker, retourner une erreur :
+            if (indexDislike !== -1) {
+                res.status(400);
+                throw new Error("Vous avez déja disliker cette sauce.");
+            }
+
+            // Si l'user a déja liker, supprimer le like :
+            if (indexLike !== -1) {
+                sauce.likes--;
+                const newArray = sauce.usersLiked.filter(id => id != userId);
+                sauce.usersLiked = newArray;
+            }
+
+            // Ajouter le dislike :
+            sauce.usersDisliked.push(userId);
+            sauce.dislikes++;
+            await sauce.save();
+            res.status(200).json({message: "Votre dislike a été ajouté !"});
+        }
+
+        // Enlever son like / dislike :
+        if (req.body.like === 0) {
             if (indexLike > -1) {
                 sauce.likes--;
                 const newArray = sauce.usersLiked.filter(id => id != userId);
                 sauce.usersLiked = newArray;
                 await sauce.save();
-
-                // console.log("test : ", newArray);
-                // console.log("sauce after  : ", sauce);
+                res.status(200).json({message: "Votre like a été supprimé !"});
             }
+
             if (indexDislike > -1) {
                 sauce.dislikes--;
                 const newArray = sauce.usersDisliked.filter(id => id != userId);
                 sauce.usersDisliked = newArray;
                 await sauce.save();
-
-                console.log("test : ", newArray);
-                console.log("sauce after  : ", sauce);
+                res.status(200).json({message: "Votre dislike a été supprimé !"});
             }
         }
-
-        if (req.body.like === -1) {
-            sauce.usersDisliked.push(userId);
-            sauce.dislikes++;
-            console.log("sauce : ", sauce);
-            await sauce.save();
-        }
-
-        // console.log(sauce);
-        res.status(200).json({message: "test !"});
     } catch (err) {
-        res.status(400).json(err);
+        next(err);
     }
 };
